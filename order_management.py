@@ -1,4 +1,4 @@
-from menu_database import get_menu
+from menu_database_mysql import get_menu
 
 # Dictionary to store orders by table or invoice (only the lastest order will be stored)
 orders = {}

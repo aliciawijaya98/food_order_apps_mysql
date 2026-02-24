@@ -1,4 +1,4 @@
-from menu_database import get_menu, add_menu_item, food_menu
+from menu_database_mysql import get_menu, add_menu_item, food_menu
 
 # View the menu
 def view_menu(menu_to_show, allow_edit=False):

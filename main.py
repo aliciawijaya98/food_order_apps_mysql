@@ -6,8 +6,8 @@ from menu_management import (
 )
 
 from order_management import order_type, show_orders
-from menu_database import get_menu
-from auth import auth_menu, user_menu, login, users
+from menu_database_mysql import get_menu
+from auth import auth_menu, user_menu
 
 
 # Store current logged-in user
