@@ -15,12 +15,12 @@ def init_db():
     cursor = conn.cursor()
 
     # Create a new database if it doesn't exist
-    cursor.execute("CREATE DATABASE IF NOT EXISTS food_menu")
+    cursor.execute("CREATE DATABASE IF NOT EXISTS restaurant")
     cursor.execute("USE food_menu")  # switch to the newly created database
 
     # Create the Menu table if it doesn't exist
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS Menu (
+    CREATE TABLE IF NOT EXISTS food_menu (
         id INT AUTO_INCREMENT PRIMARY KEY,
         category VARCHAR(50) NOT NULL,
         item VARCHAR(200) NOT NULL,
