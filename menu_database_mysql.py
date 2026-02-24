@@ -5,7 +5,8 @@ def get_connection():
     conn = mysql.connector.connect(
         host="localhost",
         user="root",          
-        password="admin"   # Change to your MySQL password
+        password="admin",  # Change to your MySQL password
+        database="restaurant"
     )
     return conn
 
@@ -16,9 +17,9 @@ def init_db():
 
     # Create a new database if it doesn't exist
     cursor.execute("CREATE DATABASE IF NOT EXISTS restaurant")
-    cursor.execute("USE food_menu")  # switch to the newly created database
+    cursor.execute("USE restaurant")
 
-    # Create the Menu table if it doesn't exist
+    # Create the food_menu table if it doesn't exist
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS food_menu (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -75,7 +76,7 @@ def add_menu_item(new_item):
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO Menu (category, item, price) VALUES (%s, %s, %s)",
+            "INSERT INTO food_menu (category, item, price) VALUES (%s, %s, %s)",
             (new_item['category'], new_item['item'], new_item['price'])
         )
         conn.commit()
