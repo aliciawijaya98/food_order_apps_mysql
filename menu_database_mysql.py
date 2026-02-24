@@ -46,7 +46,7 @@ def init_db():
 
     # Insert the menu data into the table
     cursor.executemany('''
-    INSERT INTO Menu (category, item, price)
+    INSERT INTO food_menu (category, item, price)
     VALUES (%s, %s, %s)
     ''', [(m['category'], m['item'], m['price']) for m in food_menu])
 
@@ -54,7 +54,7 @@ def init_db():
     conn.commit()
 
     # Retrieve and print all data from the Menu table
-    cursor.execute("SELECT * FROM Menu")
+    cursor.execute("SELECT * FROM food_menu")
     for row in cursor.fetchall():
         print(row)
 
@@ -64,7 +64,7 @@ def init_db():
 def get_menu():
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM Menu")
+    cursor.execute("SELECT * FROM food_menu")
     menus = cursor.fetchall()
     conn.close()
     return menus
