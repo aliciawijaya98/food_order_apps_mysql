@@ -196,3 +196,16 @@ def delete_user(user_id):
 
     finally:
         conn.close()
+        
+#VIEW USER ALL
+
+def get_all_users():
+    conn = get_connection
+    if not conn:
+        return[]
+    
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT user_id, name FROM users")
+    users = cursor.fetchhall()
+    conn.close()
+    return users
