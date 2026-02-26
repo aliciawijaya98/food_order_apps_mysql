@@ -6,11 +6,13 @@ def get_connection():
         conn = mysql.connector.connect(
             host="127.0.0.1",  #IP lebih stabil
             user="root",
-            password="Admin@123.",
+            password="admin",
             database="restaurant",
             port=3306
         )
-
+        cursor = conn.cursor()
+        cursor.execute("CREATE DATABASE IF NOT EXISTS restaurant")
+        conn.database = "restaurant"
         return conn
 
     except Error as e:
