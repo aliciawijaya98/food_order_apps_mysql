@@ -41,10 +41,10 @@ def view_menu(menu_to_show=None, allow_edit=False):
 
 
 # Search the menu
-def search_menu():
+def search_menu(menu_list):
     
     while True:
-        menu_to_show = get_menu()
+        menu_to_show = menu_list
         
         # Ask user for search query
         query = input("Search by category or item (or type 'q' to quit): ").strip().lower()
@@ -173,7 +173,12 @@ def edit_delete_item(menu_to_show):
 def add_item():
 
     # Prompt for category
-    category = input("Enter category: ").strip().title()
+    while True:
+        category = input("Enter category: ").strip().title()
+        if not category:
+            print("Category cannot be empty. Please enter a valid category.")
+            continue
+        break
 
     # Prompt for item name and check duplicates
     while True:
@@ -213,4 +218,4 @@ def add_item():
 if __name__ == "__main__":
     # Show full menu and allow edits
     view_menu(allow_edit=True)
-    search_menu()
+    search_menu(get_menu())

@@ -272,8 +272,8 @@ def register():
         "rt": rt,
         "rw": rw,
         "zip": zipcode,
-        "lat": lat,
-        "long": longitude,
+        "latitude": lat,
+        "longitude": longitude,
         "phone": phone
     })
 
@@ -448,8 +448,8 @@ def edit_profile(uid):
         "rt": new_rt,
         "rw": new_rw,
         "zip": new_zip,
-        "lat": new_lat,
-        "long": new_long,
+        "latitude": new_lat,
+        "longitude": new_long,
     }
     
     success, message = update_user(uid, updated_data)

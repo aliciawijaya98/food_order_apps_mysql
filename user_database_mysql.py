@@ -76,8 +76,8 @@ def register_user(data):
             data["rt"],
             data["rw"],
             data["zip"],
-            data["lat"],
-            data["long"],
+            data["latitude"],
+            data["longitude"],
             data["phone"]
         ))
 
@@ -155,8 +155,8 @@ def update_user(user_id, updated_data):
             updated_data["rt"],
             updated_data["rw"],
             updated_data["zip"],
-            updated_data["lat"],
-            updated_data["long"],
+            updated_data["latitude"],
+            updated_data["longitude"],
             user_id
         ))
 
