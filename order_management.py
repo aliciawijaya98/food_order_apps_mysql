@@ -120,8 +120,6 @@ def add_order(order_type, current_user, identifier):
             print(f"Failed to add item: {msg}")
 
 def show_orders(order_id):
-    from order_database_mysql import get_order_detail
-
     order_data = get_order_detail(order_id)
 
     if not order_data or not order_data["items"]:
@@ -145,7 +143,7 @@ def show_orders(order_id):
 
     # Loop through each item in the order and display details
     grand_total = 0
-    for idx, order in enumerate(items, start=1):
+    for idx, item in enumerate(items, start=1):
         price_format = f"Rp{order['price']:,}".replace(",", ".")
         subtotal_format = f"Rp{order['subtotal']:,}".replace(",", ".")
         print(column_width.format(
