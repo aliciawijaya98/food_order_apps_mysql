@@ -1,17 +1,31 @@
-from menu_database_mysql import get_menu, add_menu_item, food_menu
+from menu_database_mysql import (
+    get_menu, 
+    add_menu_item, 
+    update_menu_item,
+    delete_menu_item
+)
 
 # View the menu
-def view_menu(menu_to_show, allow_edit=False):
+
+def view_menu(menu_to_show=None, allow_edit=False):
+    
+    if menu_to_show is None:
+        menu_to_show = get_menu()
+    
+    if not menu_to_show:
+        print ("Menu is empty.")
+        return
+    
     # Print table header
     column_width = "{:<5} | {:<20} | {:<55} | {:<10}"
-    header = column_width.format("No.", "Category", "Item" , "Price")
+    header = column_width.format("ID", "Category", "Item" , "Price")
     print(header)
     print("-" * len(header))
 
     # Print each menu item in formatted table
-    for i, item in enumerate(menu_to_show, start=1):
+    for item in menu_to_show:
         price_format = f"Rp{item['price']:,}".replace(",",".")
-        print(column_width.format(i, item["category"], item["item"], price_format))
+        print(column_width.format(item["id"], item["category"], item["item"], price_format))
 
     # User can edit/delete items in the menu directly right after the menu is displayed
     if allow_edit:
@@ -27,8 +41,11 @@ def view_menu(menu_to_show, allow_edit=False):
 
 
 # Search the menu
-def search_menu(menu_to_show):
+def search_menu():
+    
     while True:
+        menu_to_show = get_menu()
+        
         # Ask user for search query
         query = input("Search by category or item (or type 'q' to quit): ").strip().lower()
         
@@ -71,16 +88,24 @@ def edit_delete_item(menu_to_show):
     view_menu(menu_to_show)
 
     # Ask for index of item to edit/delete
-    delete_index = input("Enter the index of the item to edit/delete (or 'q' to quit): ").strip()
-    if delete_index.lower() == "q":
+    menu_id_input = input("Enter the ID of the item to edit/delete (or 'q' to quit): ").strip()
+    if menu_id_input.lower() == "q":
         return
-    elif not delete_index.isdigit() or int(delete_index) < 1 or int(delete_index) >  len(menu_to_show):
-        print("Invalid index.")
+    elif not menu_id_input.isdigit():
+        print("Invalid ID.")
         return
 
-    selected_item = menu_to_show[int(delete_index) - 1]
-    print(f"Selected: {selected_item['item']}")
+    menu_id = int(menu_id_input)
+    
+    selected_item = next(
+        (item for item in menu_to_show if item["id"] == menu_id),
+        None
+    )
 
+    if not selected_item:
+        print("Item not found.")
+        return
+    
     # Ask whether to edit or delete
     edit_choice = input("Type 'e' to edit, 'd' to delete: ").strip().lower()
 
@@ -91,33 +116,41 @@ def edit_delete_item(menu_to_show):
         
         # Loop until a valid price is entered
         while True:
-            new_price = input(f"New price (Enter to keep '{selected_item['price']}'): ").strip()
+            new_price_input = input(f"New price (Enter to keep '{selected_item['price']}'): ").strip()
             
             # Keep old price if Enter pressed
-            if not new_price:
+            if not new_price_input:
+                new_price_final = selected_item ["price"]
                 break
             
             try:
-                new_price_int = int(new_price)
+                new_price_int = int(new_price_input)
 
                 # Reject negative price
                 if new_price_int < 0:
                     print("Price can't be negative. Try again.")
                     continue
-
-                # Update price
-                selected_item["price"] = new_price_int
+                new_price_final = new_price_int
                 break
             except ValueError:
                 print("Invalid price. Keeping old value.")
+                
+        #Keep old Values if empty
+        category_final = new_category if new_category else selected_item["category"]
+        name_final = new_name if new_name else selected_item["item"]         
 
         # Update category and name
-        if new_category:
-            selected_item["category"] = new_category
-        if new_name:
-            selected_item["item"] = new_name
+        success, message = update_menu_item(
+            selected_item["id"],
+            category_final,
+            name_final,
+            new_price_final
+        )
 
-        print("Item updated successfully!")
+        print(message)
+        
+        if success:
+            view_menu()
 
     elif edit_choice == "d":
         
@@ -128,8 +161,11 @@ def edit_delete_item(menu_to_show):
 
         if confirm == "y":
             try:
-                food_menu.remove(selected_item)
-                print("Item deleted successfully!")
+                success, message = delete_menu_item(selected_item["id"])
+                print(message)
+
+                if success:
+                    view_menu()
             except ValueError:
                 print("Item not found in main menu.")
 
@@ -144,7 +180,8 @@ def add_item():
         item_name = input("Enter item name: ").strip().title()
 
         # Check duplicates
-        if any(item["item"] == item_name for item in food_menu):
+        menu_list = get_menu()
+        if any(item["item"] == item_name for item in menu_list):
             print(f"Item '{item_name}' already exists. Try another name.")
             continue
         break
@@ -161,18 +198,19 @@ def add_item():
             print("Price must be a number.")
 
     # Add new item to menu
-    add_menu_item({
-        "category": category,
-        "item": item_name,
-        "price": price
+    success, message = add_menu_item({
+    "category": category,
+    "item": item_name,
+    "price": price
     })
 
-    print("Item added successfully!")
+    print(message)
+
+    if success:
+        view_menu()
 
 
 if __name__ == "__main__":
     # Show full menu and allow edits
-    view_menu(get_menu(), allow_edit=True)
-
-    # Allow user to search menu and edit/delete items
-    search_menu(get_menu())
+    view_menu(allow_edit=True)
+    search_menu()

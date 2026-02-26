@@ -1,4 +1,5 @@
 from database import get_connection
+from mysql.connector import Error
 
 # Initialize Menu_database_table
 def init_db():
@@ -14,7 +15,8 @@ def init_db():
         id INT AUTO_INCREMENT PRIMARY KEY,
         category VARCHAR(50) NOT NULL,
         item VARCHAR(200) NOT NULL,
-        price INT UNSIGNED NOT NULL
+        price INT UNSIGNED NOT NULL,
+        CONSTRAINT unique_category_item UNIQUE  (category, item)
     )
     ''')
     
@@ -67,41 +69,68 @@ def add_menu_item(new_item):
     if "category" in new_item and "item" in new_item and "price" in new_item:
         conn = get_connection()
         if not conn:
-            return
+            return False, "Database connection failed."
         
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO food_menu (category, item, price) VALUES (%s, %s, %s)",
-             (new_item["category"], new_item["item"], new_item["price"])
-        )    
-        conn.commit()
-        conn.close()
+        try: 
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO food_menu (category, item, price) 
+                VALUES (%s, %s, %s)
+                """,
+                (new_item["category"], new_item["item"], new_item["price"])
+            )    
+            conn.commit()
+            return True,"Item added successfully"
+        
+        except Error as e:
+            if e.errno == 1062:
+                 return False, "Menu already exists in this category."
+            return False, f"Database error: {e}"
+            
+        finally:    
+            conn.close()
 
-# Update menu price
-def update_menu_price(menu_id, new_price):
+# Update menu item
+def update_menu_item(menu_id, category, item, price):
     conn = get_connection()
     if not conn:
-        return
-        
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE food_menu SET price = %s WHERE id = %s",
-        (new_price, menu_id)
-    )
-    conn.commit()
-    conn.close()
+        return False, "Database connection failed."
+    
+    try:     
+        cursor = conn.cursor()
+        cursor.execute("""
+        UPDATE food_menu 
+        SET category = %s, item = %s, price = %s 
+        WHERE id = %s
+        """,
+        (category, item, price, menu_id)
+        )
+        conn.commit()
+        return True, "Item updated successfully."
+    
+    except Error as e:
+        if e.errno == 1062:
+            return False, "Duplicate item in this category."
+        return False, f"Database error: {e}"
+
+    finally:
+        conn.close()
+    
 
 
 # Delete menu item
 def delete_menu_item(menu_id):
     conn = get_connection()
     if not conn:
-        return
-        
-    cursor = conn.cursor()
-    cursor.execute(
-        "DELETE FROM food_menu WHERE id = %s",
-        (menu_id,)
-    )
-    conn.commit()
-    conn.close()
+        return False, "Database connection failed."
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM food_menu WHERE id = %s", (menu_id,))
+        conn.commit()
+        return True, "Item deleted successfully."
+    except Error as e:
+        return False, f"Database error: {e}"
+    finally:
+        conn.close()
