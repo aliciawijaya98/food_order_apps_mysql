@@ -46,7 +46,7 @@ def takeaway(current_user):
     # Ask for invoice number and ensure it's a positive integer
     while True:
         try:
-            invoice_num = int(input("Insert table number: "))
+            invoice_num = int(input("Insert invoice number: "))
             if invoice_num <= 0:
                 print("Table number must be greater than 0. Try again.")
                 continue
@@ -91,21 +91,9 @@ def add_order(order_type, current_user, identifier):
             continue
 
         if item_no == 0:
-            order_data = get_order_detail(order_id)
-            if not order_data or not order_data["order"]:
-                print("No items ordered.")
-                return
-            
-            print(f"\nInvoice: {order_data['order']['invoice_code']}")
-            print("{:<5} | {:<30} | {:<10} | {:<15} | {:<15}".format("No", "Item", "Qty", "Price", "Subtotal"))
-            print("-"*85)
-            grand_total = 0
-            for idx, it in enumerate(order_data['items'], 1):
-                print("{:<5} | {:<30} | {:<10} | Rp{:<15,} | Rp{:<15,}".format(
-                    idx, it['item'], it['quantity'], it['price'], it['subtotal']).replace(",", "."))
-                grand_total += it['subtotal']
-            print(f"\nGrand Total: Rp{grand_total:,}".replace(",", "."))
-            break 
+            print("\n=== ORDER SUMMARY ===") 
+            show_orders(order_id)              
+            break
         
         # Validate item number
         if not (1 <= item_no <= len(menu_list)):
@@ -136,7 +124,7 @@ def show_orders(order_id):
 
     order_data = get_order_detail(order_id)
 
-    if not order_data or not order_data["order"]:
+    if not order_data or not order_data["items"]:
         print("No orders found.")
         return
     
@@ -159,9 +147,15 @@ def show_orders(order_id):
     grand_total = 0
     for idx, order in enumerate(items, start=1):
         price_format = f"Rp{order['price']:,}".replace(",", ".")
-        total_format = f"Rp{order['total']:,}".replace(",", ".")
-        print(column_width.format(idx, order['item'], order['quantity'], price_format, total_format))
-        grand_total += order['total']
+        subtotal_format = f"Rp{order['subtotal']:,}".replace(",", ".")
+        print(column_width.format(
+            idx,
+            order['item'],
+            order['quantity'],
+            price_format,
+            subtotal_format
+        ))
+        grand_total += order['subtotal']
 
     # Display the grand total for this order
     grand_total_format = f"Rp{grand_total:,}".replace(",", ".")
