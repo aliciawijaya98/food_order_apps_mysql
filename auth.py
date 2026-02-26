@@ -1,5 +1,11 @@
-# Dictionary to store all user data
-users = {}
+from user_database_mysql import ( 
+    register_user,
+    login_user,
+    get_user_by_userid,
+    update_user,
+    delete_user,
+    get_all_users
+)
 
 # ---------- BASIC VALIDATION ----------
 def only_alpha(text):
@@ -24,7 +30,7 @@ def validate_email(email):
     user, domain_full = email.split("@")
 
     #User check
-    if not user or not "." in domain_full:
+    if not user or "." not in domain_full:
         return False
 
     if not user[0].isalnum():
@@ -57,26 +63,21 @@ def validate_userid(uid):
 
     if len(uid) < 6 or len(uid) > 20:
         return False
-
-    has_letter = False
-    has_digit = False
-
-    for char in uid:
-        if not (char.isalnum() or char in "._"):
-            return False
-        if char.isalpha():
-            has_letter = True
-        if char.isdigit():
-            has_digit = True
-
+    
+    if not all(c.isalnum() or c in "._" for c in uid):
+        return False
+    
+    has_letter = any(c.isalpha() for c in uid)
+    has_digit = any(c.isdigit() for c in uid)
+    
     if not (has_letter and has_digit):
         return False
-
-    if uid in users:
+    
+    # cek ke database
+    if get_user_by_userid(uid):
         return False
-
+    
     return True
-
 
 # ---------- PASSWORD VALIDATION ----------
 def validate_password(pw):
@@ -258,25 +259,25 @@ def register():
     confirm = input("Save data? (Y/N): ").strip().lower()
 
     if confirm == "y":
-        users[uid] = {
-            "password": pw,
-            "name": name,
-            "email": email,
-            "gender": gender,
-            "age": age,
-            "job": job,
-            "hobby": hobbies,
-            "address": {
-                "city": city,
-                "rt": rt,
-                "rw": rw,
-                "zip": zipcode,
-                "lat": lat,
-                "long": longitude,
-            },
-            "phone": phone,
-        }
-        print("Registration successful")
+        success, message = register_user({
+        "user_id": uid,
+        "password": pw,
+        "email": email,
+        "name": name,
+        "gender": gender,
+        "age": age,
+        "job": job,
+        "hobby": hobbies,
+        "city": city,
+        "rt": rt,
+        "rw": rw,
+        "zip": zipcode,
+        "lat": lat,
+        "long": longitude,
+        "phone": phone
+    })
+
+        print(message)
     else:
         print("Registration cancelled")
 
@@ -290,13 +291,10 @@ def login():
         uid = input("UserID: ")
         pw = input("Password: ")
 
-        if uid not in users:
-            print("User not registered")
-            attempts += 1
-            continue
-
-        if users[uid]["password"] != pw:
-            print("Wrong password")
+        success, result = login_user(uid,pw)
+        
+        if not success:
+            print(result)
             attempts += 1
             continue
 
@@ -309,131 +307,177 @@ def login():
 
 # ---------- PROFILE ----------
 def profile(uid):
-    u = users[uid]
-
+    user = get_user_by_userid(uid)
+     
+    if not user:
+        print("User not found.")
+        return
+    
     print("\n=== PROFILE ===")
-    print("Name:", u["name"])
-    print("Email:", u["email"])
-    print("Gender:", u["gender"])
-    print("Age:", u["age"])
-    print("Job:", u["job"])
-    print("Hobby:", ", ".join(u["hobby"]))
-
-
-    addr = u["address"]
-
+    print("Name:", user["name"])
+    print("Email:", user["email"])
+    print("Gender:", user["gender"])
+    print("Age:", user["age"])
+    print("Job:", user["job"])
+    print("Hobby:", ", ".join(user["hobby"].split(",")))
+    
     print("\nAddress")
-    print("City:", addr["city"])
-    print("RT:", addr["rt"])
-    print("RW:", addr["rw"])
-    print("Zip:", addr["zip"])
+    print("City:", user["city"])
+    print("RT:", user["rt"])
+    print("RW:", user["rw"])
+    print("Zip:", user["zip"])
 
     print("\nGeo")
-    print("Latitude:", addr["lat"])
-    print("Longitude:", addr["long"])
+    print("Latitude:", user["latitude"])
+    print("Longitude:", user["longitude"])
 
-    print("Phone:", u["phone"])
+    print("Phone:", user["phone"])
     
 # ---------- Edit User Data ----------
 def edit_profile(uid):
-    u = users[uid]
+    user = get_user_by_userid(uid) 
+    
+    if not user:
+        print("User not found.")
+        return
 
     print("\n=== Edit Profile ===")
     print("Press Enter to skip any field.\n")
 
     # Name
-    print(f"Current Name : {u['name']}")
+    print(f"Current Name : {user['name']}")
     new_name = input("New Name: ").strip()
-    if new_name:
-        u["name"] = new_name
+    if new_name and not only_alpha(new_name):
+        print("Name must contain letters only.")
+        new_name = user["name"]
+    elif not new_name: 
+        new_name = user["name"]
 
     # Email
-    print(f"\nCurrent Email: {u['email']}")
+    print(f"\nCurrent Email: {user['email']}")
     new_email = input("New Email: ").strip()
     if new_email:
-        if validate_email(new_email):
-            u["email"] = new_email
-        else:
-            print("Invalid email format. Email not updated.")
-
+        if not validate_email(new_email):
+            print("Invalid email format.")
+            new_email = user["email"]
+    else:
+        new_email = user["email"]
+            
     # Job
-    print(f"\nCurrent Job  : {u['job']}")
+    print(f"\nCurrent Job  : {user['job']}")
     new_job = input("New Job: ").strip()
-    if new_job:
-        u["job"] = new_job
+    if new_job and not only_alpha(new_job):
+        new_job = user ["job"]
+    elif not new_job:
+        new_job = user ["job"]
 
     # Phone
-    print(f"\nCurrent Phone: {u['phone']}")
-    while True:
-        new_phone = input("New Phone: ").strip()
-        if not new_phone:
-            break
-        if only_int(new_phone) and 11 <= len(new_phone) <= 13:
-            u["phone"] = new_phone
-            break
-        else:
-            print("Phone must be numeric and 11-13 digits. Try again.")
-
-    # Address
-    addr = u["address"]
-
+    print(f"\nCurrent Phone: {user['phone']}")
+    new_phone = input("New Phone: ").strip()
+    if new_phone:
+        if not (only_int(new_phone) and 11 <= len(new_phone) <= 13):
+            print("Phone must be numeric and 11-13 digits.")
+            new_phone = user["phone"]
+    else:
+        new_phone = user["phone"]
+            
+    # city
     print("\n--- Address Update ---")
-
-    print(f"Current City: {addr['city']}")
+    print(f"\nCurrent City: {user['city']}")
     new_city = input("New City: ").strip()
-    if new_city and only_alpha(new_city):
-        addr["city"] = new_city
+    if new_city and not only_alpha(new_city):
+        print ("City must contain letters only")
+        new_city = user["city"]
+    elif not new_city:
+        new_city = user["city"]
 
-    print(f"Current RT: {addr['rt']}")
+    #RT
+    print(f"Current RT: {user['rt']}")
     new_rt = input("New RT: ").strip()
-    if new_rt and only_int(new_rt):
-        addr["rt"] = new_rt
+    if new_rt and not only_int(new_rt):
+        print ("RT must be numeric.")
+        new_rt = user["rt"]
+    elif not new_rt:
+        new_rt = user["rt"]
 
-    print(f"Current RW: {addr['rw']}")
+    #RW
+    print(f"Current RW: {user['rw']}")
     new_rw = input("New RW: ").strip()
-    if new_rw and only_int(new_rw):
-        addr["rw"] = new_rw
+    if new_rw and not only_int(new_rw):
+        print ("RW must be numeric.")
+        new_rw = user["rw"]
+    elif not new_rw: 
+        new_rw = user["rw"]
 
-    print(f"Current Zip: {addr['zip']}")
+    #ZIP
+    print(f"Current Zip: {user['zip']}")
     new_zip = input("New Zip Code: ").strip()
-    if new_zip and only_int(new_zip) and len(new_zip) == 5:
-        addr["zip"] = new_zip
+    if new_zip:
+        if not (only_int(new_zip) and len(new_zip) == 5):
+            print("Zip must be 5 digits")
+            new_zip = user["zip"]
+    else:
+        new_zip = user["zip"]
         
-    # Geo
+    # LATITUDE
     
-    print(f"Current Latitude: {addr['lat']}")
+    print(f"Current Latitude: {user['latitude']}")
     new_lat = input("New Latitude: ").strip()
-    if new_lat and only_float(new_lat):
-        addr["lat"] = new_lat
+    if new_lat and not only_float(new_lat):
+        print("Invalid latitude format.")
+        new_lat = user["latitude"]
+    elif not new_lat:
+        new_lat = user["latitude"]
 
-    print(f"Current Longitude: {addr['long']}")
+    #LONGITUDE
+    print(f"Current Longitude: {user['longitude']}")
     new_long = input("New Longitude: ").strip()
-    if new_long and only_float(new_long):
-        addr["long"] = new_long
-
-    print("\nProfile updated successfully.")
+    if new_long and not only_float(new_long):
+        print("Invalid longitude format.")
+        new_long = user["longitude"]
+    elif not new_long:
+        new_long = user["longitude"]
+        
+    # Update Database
+    updated_data = {
+        "name": new_name,
+        "email": new_email,
+        "job": new_job,
+        "phone": new_phone,
+        "city": new_city,
+        "rt": new_rt,
+        "rw": new_rw,
+        "zip": new_zip,
+        "lat": new_lat,
+        "long": new_long,
+    }
+    
+    success, message = update_user(uid, updated_data)
+    print (message)
 
 # ---------- Delete Account ----------
 def delete_account(uid):
     confirm = input("Delete account permanently? (Y/N): ").lower()
 
     if confirm == "y":
-        del users[uid]
-        print("Account deleted")
-        return True
+        success, message = delete_user(uid) 
+        print(message)
+        return success
 
     print("Deletion cancelled")
     return False
 
 # ---------- View Users ----------
 def view_users():
+    users = get_all_users()
+    
     if not users:
         print("No users registered")
         return
 
     print("\n=== REGISTERED USERS ===")
-    for uid, data in users.items():
-        print(f"{uid} - {data['name']}")
+    for user in users:
+        print(f"{user['user_id']} - {user['name']}")
 
 
     
