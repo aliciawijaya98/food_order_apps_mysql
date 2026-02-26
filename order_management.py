@@ -1,5 +1,5 @@
 from menu_database_mysql import get_menu
-from order_database import create_order, add_order_item, get_order_detail
+from order_database_mysql import create_order, add_order_item, get_order_detail
 
 #ORDER MENU DISPLAY
 def order_type(current_user):
