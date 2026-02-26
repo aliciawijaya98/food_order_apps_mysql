@@ -144,19 +144,19 @@ def show_orders(order_id):
     # Loop through each item in the order and display details
     grand_total = 0
     for idx, item in enumerate(items, start=1):
-        price_format = f"Rp{order['price']:,}".replace(",", ".")
-        subtotal_format = f"Rp{order['subtotal']:,}".replace(",", ".")
+        price_format = f"Rp{int(item['price']):,}".replace(",", ".")
+        subtotal_format = f"Rp{int(item['subtotal']):,}".replace(",", ".")
         print(column_width.format(
             idx,
-            order['item'],
-            order['quantity'],
+            item['item'],
+            item['quantity'],
             price_format,
             subtotal_format
         ))
-        grand_total += order['subtotal']
+        grand_total += item['subtotal']
 
     # Display the grand total for this order
-    grand_total_format = f"Rp{grand_total:,}".replace(",", ".")
+    grand_total_format = f"Rp{int(grand_total):,}".replace(",", ".")
     print(f"\nGrand Total: {grand_total_format}")
 
 if __name__ == "__main__":
