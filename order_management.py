@@ -157,7 +157,7 @@ def show_orders(order_id):
 
     # Loop through each item in the order and display details
     grand_total = 0
-    for idx, order in enumerate(current_order, start=1):
+    for idx, order in enumerate(items, start=1):
         price_format = f"Rp{order['price']:,}".replace(",", ".")
         total_format = f"Rp{order['total']:,}".replace(",", ".")
         print(column_width.format(idx, order['item'], order['quantity'], price_format, total_format))
