@@ -44,7 +44,7 @@ def register_user(data):
     "user_id", "password", "email", "name",
     "gender", "age", "job", "hobby",
     "city", "rt", "rw", "zip",
-    "lat", "long", "phone"
+    "latitude", "longitude", "phone"
 ]
 
     if not all(field in data for field in required_fields):
@@ -200,12 +200,12 @@ def delete_user(user_id):
 #VIEW USER ALL
 
 def get_all_users():
-    conn = get_connection
+    conn = get_connection()
     if not conn:
         return[]
     
     cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT user_id, name FROM users")
-    users = cursor.fetchhall()
+    users = cursor.fetchall()
     conn.close()
     return users
