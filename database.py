@@ -7,7 +7,6 @@ def get_connection():
             host="127.0.0.1",  #IP lebih stabil
             user="root",
             password="admin",
-            database="restaurant",
             port=3306
         )
         cursor = conn.cursor()

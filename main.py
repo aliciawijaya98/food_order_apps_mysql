@@ -6,8 +6,9 @@ from menu_management import (
 )
 
 from order_management import order_type, show_orders
-from menu_database_mysql import get_menu
+from menu_database_mysql import get_menu, init_db
 from auth import auth_menu, user_menu
+from user_database_mysql import init_users_table
 
 
 # Store current logged-in user
@@ -187,4 +188,6 @@ def order_management():
 # PROGRAM ENTRY POINT  
 # Ensures program runs only when file executed directly
 if __name__ == "__main__":
+    init_users_table()
+    init_db()
     main_menu()
