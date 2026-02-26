@@ -1,7 +1,5 @@
 from menu_database_mysql import get_menu
-
-# Dictionary to store orders by table or invoice (only the lastest order will be stored)
-orders = {}
+from order_database import create_order, add_order_item, get_order_detail
 
 #ORDER MENU DISPLAY
 def order_type(current_user):
@@ -41,12 +39,6 @@ def dine_in(current_user):
         except ValueError:
             print("Table number must be a number. Try again.")
 
-    # If table has existing order, show it
-    if table_num in orders:
-        print("Existing order found:")
-        show_orders(table_num)
-
-    print(f"Dine-in selected. Table number: {table_num}")
     add_order("Dine-in", table_num, current_user)
 
 def takeaway(current_user):
@@ -62,24 +54,20 @@ def takeaway(current_user):
         except ValueError:
             print("Table number must be a number. Try again.")
 
-    # If invoice has existing order, show it
-    if invoice_num in orders:
-        print("Existing order found:")
-        show_orders(invoice_num)
-        
-    print(f"Takeaway selected. Invoice number: {invoice_num}")
     add_order("Takeaway", invoice_num, current_user)
 
-def add_order(order_type, table_num=None, invoice_num=None, current_user=None):
+def add_order(order_type, current_user, identifier):
 
     # Fetch latest menu
-    current_menu = get_menu()
-
-    # Temporary list to store this order session
-    current_order = []
-
-    # Determine the identifier for this order
-    order_id = table_num if order_type == "Dine-in" else invoice_num
+    menu_list = get_menu()
+    if not menu_list:
+        print("Menu is empty.")
+        return
+    
+    order_id, invoice_code = create_order(current_user, order_type, identifier)
+    if not order_id:
+        print(f"Failed to create order: {invoice_code}")
+        return
 
     while True:
 
@@ -91,73 +79,40 @@ def add_order(order_type, table_num=None, invoice_num=None, current_user=None):
         print("-" * len(header))
 
         # Display the menu
-        for i, item in enumerate(current_menu, start=1):
+        for i, item in enumerate(menu_list, start=1):
             price_format = f"Rp{item['price']:,}".replace(",",".")
             print(column_width.format(i, item["category"], item["item"], price_format))
         
-        # Display current order
-        if current_order:
-            print("\nCurrent Order:")
-            for i, order in enumerate(current_order, start=1):
-                print(f"{i}. {order['quantity']} x {order['item']} = Rp{order['total']:,}".replace(",", "."))
-
-            # Option to delete an item from current order
-            while True:
-                delete_input = input("Type 'd' to delete an item, or Enter to continue: ").strip().lower()
-                if delete_input in ["d", ""]:
-                    break
-                print("Invalid input. Type 'd' or press Enter to continue.")
-            
-            if delete_input == "d":
-                try:
-                    del_index = int(input("Which item number to delete? "))
-                    if 1 <= del_index <= len(current_order):
-                        removed_item = current_order.pop(del_index - 1)
-                        print(f"Removed {removed_item['item']} from order")
-                    else:
-                        print("Invalid item number")
-                except ValueError:
-                    print("Must be a number")
-                continue  # back to taking order
-
         # Input item number
         try:
-            user_input = int(input("\nSelect item number (type '0' to finish): "))
+            item_no = int(input("\nSelect item number (0 to finish): "))
         except ValueError:
             print("Must be a number. Try again.")
             continue
 
-        if user_input == 0:
-            if not current_order:
-                print("No items ordered")
-            else:
-                #Save to order dictionary
-                if order_type == "Dine-in":
-                    print(f"Finish ordering. Table {order_id}")
-                else:
-                    print(f"Finish ordering. Invoice {order_id}")
-                
-                # If there is an existing order, merge items
-                if order_id in orders:
-                    orders[order_id]["items"].extend(current_order)
-                    orders[order_id]["cashier"] = current_user
-                else:
-                    orders[order_id] = {
-                        "cashier": current_user,
-                        "items": current_order
-                    }
-                
-                #Display the final order summary
-                show_orders(order_id)
+        if item_no == 0:
+            order_data = get_order_detail(order_id)
+            if not order_data["order"]:
+                print("No items ordered.")
+                return
+            print(f"\nInvoice: {order_data['order']['invoice_code']}")
+            print("{:<5} | {:<30} | {:<10} | {:<15} | {:<15}".format("No", "Item", "Qty", "Price", "Subtotal"))
+            print("-"*85)
+            grand_total = 0
+            for idx, it in enumerate(order_data['items'], 1):
+                print("{:<5} | {:<30} | {:<10} | Rp{:<15,} | Rp{:<15,}".format(
+                    idx, it['item'], it['quantity'], it['price'], it['subtotal']).replace(",", "."))
+                grand_total += it['subtotal']
+            print(f"\nGrand Total: Rp{grand_total:,}".replace(",", "."))
             break 
         
         # Validate item number
-        elif not (1 <= user_input <= len(current_menu)):
-            print("Invalid input. Try again")
+        if not (1 <= item_no <= len(menu_list)):
+            print("Invalid selection. Try again.")
             continue
 
         # Input quantity for selected item
-        item = current_menu[user_input - 1]
+        item_selected = menu_list[item_no - 1]
         
         try:
             qty = int(input(f"Insert the quantity for {item['item']}: "))
@@ -168,51 +123,14 @@ def add_order(order_type, table_num=None, invoice_num=None, current_user=None):
             print("Must be number. Try again.")
             continue
         
-        # Store the order item in temporary list
-        order_item = {
-            "order_type": order_type,
-            "order_id": order_id,
-            "category": item['category'],
-            "item": item['item'],
-            "price": item['price'],
-            "quantity": qty,
-            "total": item['price'] * qty
-        }
+        # Store in order database
+        success, msg = add_order_item(order_id, item_selected['id'], qty, item_selected['price'])
+        if success:
+            print(f"Added {qty} x {item_selected['item']}")
+        else:
+            print(f"Failed to add item: {msg}")
 
-        current_order.append(order_item)
-
-def show_orders(order_id):
-
-    # Check if there is any order for the given order_id
-    if order_id not in orders or not orders[order_id]:
-        print(f"No orders yet for {order_id}.")
-        return
-
-    # Retrieve the order details from the global orders dictionary
-    order_data = orders[order_id]
-    current_order = order_data["items"]
-    
-    # Display cashier who handled the order
-    print(f"\nCashier: {order_data['cashier']}")
-
-    # Print order summary header
-    print(f"=== ALL ORDER SUMMARY FOR {order_id}===")
-    column_width = "{:<5} | {:<30} | {:<10} | {:<15} | {:<15}"
-    header = column_width.format("No.", "Item", "Qty", "Price", "Total")
-    print(header)
-    print("-" * len(header))
-
-    # Loop through each item in the order and display details
-    grand_total = 0
-    for idx, order in enumerate(current_order, start=1):
-        price_format = f"Rp{order['price']:,}".replace(",", ".")
-        total_format = f"Rp{order['total']:,}".replace(",", ".")
-        print(column_width.format(idx, order['item'], order['quantity'], price_format, total_format))
-        grand_total += order['total']
-
-    # Display the grand total for this order
-    grand_total_format = f"Rp{grand_total:,}".replace(",", ".")
-    print(f"\nGrand Total: {grand_total_format}")
 
 if __name__ == "__main__":
-    order_type()
+    current_user = input("Enter cashier/user ID: ").strip()
+    order_type(current_user)
