@@ -36,7 +36,7 @@ def init_order_tables():
         subtotal DECIMAL (10,2) NOT NULL,
         FOREIGN KEY (order_id) REFERENCES orders(id)
             ON DELETE CASCADE,
-        FOREIGN KEY (menu_id) REFERENCES menu(id)
+        FOREIGN KEY (menu_id) REFERENCES food_menu(id)
     )
     """)
     
@@ -132,7 +132,7 @@ def update_order_total(order_id):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT SUM (subtotal)
+        SELECT SUM(subtotal)
         FROM order_items
         WHERE order_id = %s
     """, (order_id,))
@@ -167,7 +167,7 @@ def get_order_detail(order_id):
     cursor.execute("""
         SELECT oi.quantity, oi.price, oi.subtotal, m.item
         FROM order_items oi
-        JOIN menu m ON oi.menu_id = m.id
+        JOIN food_menu m ON oi.menu_id = m.id
         WHERE oi.order_id = %s
     """, (order_id,))
     items = cursor.fetchall()

@@ -39,7 +39,7 @@ def dine_in(current_user):
         except ValueError:
             print("Table number must be a number. Try again.")
 
-    add_order("Dine-in", table_num, current_user)
+    add_order("Dine-in", current_user, table_num)
 
 def takeaway(current_user):
 
@@ -54,7 +54,7 @@ def takeaway(current_user):
         except ValueError:
             print("Table number must be a number. Try again.")
 
-    add_order("Takeaway", invoice_num, current_user)
+    add_order("Takeaway", current_user, invoice_num)
 
 def add_order(order_type, current_user, identifier):
 
@@ -92,9 +92,10 @@ def add_order(order_type, current_user, identifier):
 
         if item_no == 0:
             order_data = get_order_detail(order_id)
-            if not order_data["order"]:
+            if not order_data or not order_data["order"]:
                 print("No items ordered.")
                 return
+            
             print(f"\nInvoice: {order_data['order']['invoice_code']}")
             print("{:<5} | {:<30} | {:<10} | {:<15} | {:<15}".format("No", "Item", "Qty", "Price", "Subtotal"))
             print("-"*85)
@@ -115,7 +116,7 @@ def add_order(order_type, current_user, identifier):
         item_selected = menu_list[item_no - 1]
         
         try:
-            qty = int(input(f"Insert the quantity for {item['item']}: "))
+            qty = int(input(f"Insert the quantity for {item_selected['item']}: "))
             if qty <= 0:
                 print("Quantity must be greater than 0. Try again.")
                 continue
@@ -130,6 +131,41 @@ def add_order(order_type, current_user, identifier):
         else:
             print(f"Failed to add item: {msg}")
 
+def show_orders(order_id):
+    from order_database_mysql import get_order_detail
+
+    order_data = get_order_detail(order_id)
+
+    if not order_data or not order_data["order"]:
+        print("No orders found.")
+        return
+    
+    order = order_data["order"]
+    items = order_data["items"]
+    
+    # Display cashier who handled the order
+    print(f"\nInvoice: {order['invoice_code']}")
+    print(f"Cashier: {order['user_id']}")
+    print(f"Order Type: {order['order_type']}")
+
+    # Print order summary header
+    print(f"=== ALL ORDER SUMMARY FOR {order_id}===")
+    column_width = "{:<5} | {:<30} | {:<10} | {:<15} | {:<15}"
+    header = column_width.format("No.", "Item", "Qty", "Price", "Total")
+    print(header)
+    print("-" * len(header))
+
+    # Loop through each item in the order and display details
+    grand_total = 0
+    for idx, order in enumerate(current_order, start=1):
+        price_format = f"Rp{order['price']:,}".replace(",", ".")
+        total_format = f"Rp{order['total']:,}".replace(",", ".")
+        print(column_width.format(idx, order['item'], order['quantity'], price_format, total_format))
+        grand_total += order['total']
+
+    # Display the grand total for this order
+    grand_total_format = f"Rp{grand_total:,}".replace(",", ".")
+    print(f"\nGrand Total: {grand_total_format}")
 
 if __name__ == "__main__":
     current_user = input("Enter cashier/user ID: ").strip()
