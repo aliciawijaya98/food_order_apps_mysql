@@ -190,6 +190,6 @@ def order_management():
 # Ensures program runs only when file executed directly
 if __name__ == "__main__":
     init_users_table()
-    init_order_tables()
     init_db()
+    init_order_tables()
     main_menu()
