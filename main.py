@@ -9,7 +9,7 @@ from order_management import order_type, show_orders
 from menu_database_mysql import get_menu, init_db
 from auth import auth_menu, user_menu
 from user_database_mysql import init_users_table
-from order_database_mysql import init_order_tables
+from order_database_mysql import init_order_tables, find_order_id
 
 
 # Store current logged-in user
@@ -172,10 +172,13 @@ def order_management():
 
         # Review existing order
         elif user_input == 2:
-            table_or_invoice = input(
-                "Enter table number or invoice to review: "
-            ).strip()
-            show_orders(table_or_invoice)
+            keyword = input("Enter table number or invoice: ").strip()
+            order_id = find_order_id(keyword)
+
+            if not order_id:
+                print("Order not found.")
+            else:
+                show_orders(order_id)
 
         # Back to main menu
         elif user_input == 3:
