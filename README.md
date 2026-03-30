@@ -1,5 +1,5 @@
 ## Food Ordering Application
-This project is a **command-line interface (CLI) application** built entirely with Python's standard library, designed to help restaurant administrators manage daily operations efficiently.
+This project is a **command-line interface (CLI) application** built entirely with Python's standard library and integrated with **MySQL database**, designed to help restaurant administrators manage daily operations efficiently.
 
 ## Features & Key Highlights
 1. **Menu Management**: Add, edit, or delete menu items, giving admins full control over restaurant offerings.
