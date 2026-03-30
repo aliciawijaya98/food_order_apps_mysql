@@ -16,7 +16,7 @@ def init_order_tables():
         invoice_code VARCHAR (30) UNIQUE NOT NULL,
         user_id VARCHAR(20) NOT NULL,
         order_type ENUM ('Dine-in', 'Takeaway') NOT NULL,
-        reference_number INT NOT NULL,
+        reference_number INT NULL,
         total_price DECIMAL(12,2) DEFAULT 0,
         order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
         status ENUM ('pending', 'paid','cancelled') DEFAULT 'pending',
@@ -33,7 +33,7 @@ def init_order_tables():
         menu_id INT NOT NULL,
         quantity INT NOT NULL,
         price DECIMAL(12,2) NOT NULL,
-        subtotal DECIMAL (10,2) NOT NULL,
+        subtotal DECIMAL (12,2) NOT NULL,
         FOREIGN KEY (order_id) REFERENCES orders(id)
             ON DELETE CASCADE,
         FOREIGN KEY (menu_id) REFERENCES food_menu(id)
@@ -70,32 +70,39 @@ def create_order(user_id, order_type, reference_number):
     conn = get_connection()
     if not conn:
         return None, "Database connection failed."
-    
+
     try:
         cursor = conn.cursor()
-        
-        invoice_code = generate_daily_invoice()
-        
+
         if order_type not in ["Dine-in", "Takeaway"]:
             return None, "Invalid order type."
-        
+
         cursor.execute("""
-            INSERT INTO orders
-            (invoice_code, user_id, order_type, reference_number)
-            VALUES (%s, %s, %s, %s)                              
-        """, (invoice_code, user_id, order_type, reference_number))
-        
-        conn.commit()
-        
+            INSERT INTO orders (invoice_code, user_id, order_type, reference_number)
+            VALUES ('TEMP', %s, %s, %s)
+        """, (user_id, order_type, reference_number))
+
         order_id = cursor.lastrowid
+
+        today_str = datetime.now().strftime("%Y%m%d")
+        invoice_code = f"{today_str}-{order_id:04d}"
+
+        cursor.execute("""
+            UPDATE orders
+            SET invoice_code = %s
+            WHERE id = %s
+        """, (invoice_code, order_id))
+
+        conn.commit()
         return order_id, invoice_code
-    
+
     except Error as e:
+        conn.rollback()
         return None, f"Database error: {e}"
-    
+
     finally:
         conn.close()
-        
+    
 #ADD ORDER ITEM (DETAIL)
 def add_order_item(order_id, menu_id, quantity, price):
     conn = get_connection()
@@ -110,46 +117,34 @@ def add_order_item(order_id, menu_id, quantity, price):
         cursor.execute("""
             INSERT INTO order_items
             (order_id, menu_id, quantity, price, subtotal)
-            VALUES (%s, %s, %s, %s, %s)               
+            VALUES (%s, %s, %s, %s, %s)
         """, (order_id, menu_id, quantity, price, subtotal))
         
+        # update total in SAME transaction
+        cursor.execute("""
+            SELECT SUM(subtotal)
+            FROM order_items
+            WHERE order_id = %s
+        """, (order_id,))
+        
+        total = cursor.fetchone()[0] or 0
+        
+        cursor.execute("""
+            UPDATE orders
+            SET total_price = %s
+            WHERE id = %s
+        """, (total, order_id))
+        
         conn.commit()
-        update_order_total(order_id)
         return True, "Item added."
     
     except Error as e:
+        conn.rollback()
         return False, f"Database error: {e}"
     
     finally:
         conn.close()
         
-#UPDATE TOTAL PRICE
-def update_order_total(order_id):
-    conn = get_connection()
-    if not conn:
-        return False
-    
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        SELECT SUM(subtotal)
-        FROM order_items
-        WHERE order_id = %s
-    """, (order_id,))
-    
-    total = cursor.fetchone()[0] or 0
-    
-    cursor.execute("""
-        UPDATE orders
-        SET total_price = %s
-        WHERE id = %s                
-    """, (total, order_id))
-    
-    conn.commit()
-    conn.close()
-    
-    return True
-
 #GET ORDER DETAIL
 def get_order_detail(order_id):
     conn = get_connection()
@@ -202,3 +197,80 @@ def get_daily_sales():
         "total_orders": result[0] or 0,
         "total_revenue": result [1] or 0
     }
+
+#Check Active table biar gak double
+def check_active_table(table_number):
+    conn = get_connection()
+    if not conn:
+        return None
+    
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT id 
+        FROM orders
+        WHERE reference_number = %s
+        AND order_type = 'Dine-in'
+        AND status = 'pending'
+        LIMIT 1
+    """, (table_number,))
+    
+    result = cursor.fetchone()
+    conn.close()
+    
+    return result [0] if result else None
+
+#Payment System
+def pay_order(order_id):
+    conn = get_connection()
+    if not conn:
+        return False, "Database connection Failed."
+    
+    try:
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE orders
+            SET STATUS = 'paid'
+            WHERE id = %s AND STATUS = 'pending'
+        """, (order_id,))
+        
+        if cursor.rowcount == 0:
+            return False, "Order cannot be paid"
+        
+        conn.commit()
+        return True, "Payment successful. Order closed."
+    
+    except Error as e:
+        return False, f"Database error: {e}"
+    
+    finally:
+        conn.close()
+        
+#Find order
+def find_order_id(keyword):
+    conn = get_connection()
+    if not conn:
+        return None
+
+    cursor = conn.cursor()
+
+    # Cek invoice_code dulu
+    cursor.execute("""
+        SELECT id FROM orders
+        WHERE invoice_code = %s
+    """, (keyword,))
+    result = cursor.fetchone()
+
+    # Kalau tidak ketemu dan input angka → cek sebagai table number
+    if not result and keyword.isdigit():
+        cursor.execute("""
+            SELECT id FROM orders
+            WHERE reference_number = %s
+            AND status = 'pending'
+        """, (int(keyword),))
+        result = cursor.fetchone()
+
+    conn.close()
+
+    return result[0] if result else None
